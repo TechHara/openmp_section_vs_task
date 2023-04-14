@@ -11,15 +11,11 @@ constexpr auto SEED = 41;
 
 auto get_random_numbers(std::size_t n) {
   std::vector<double> array(n);
-#pragma omp parallel default(none) shared(array, n)
-  {
-    std::mt19937 e{SEED};
-    std::uniform_real_distribution<double> uniform_dist(0.0, 1.0);
+  std::mt19937 e{SEED};
+  std::uniform_real_distribution<double> uniform_dist(0.0, 1.0);
 
-#pragma omp for
-    for (std::size_t idx = 0; idx < n; ++idx)
-      array[idx] = uniform_dist(e);
-  }
+  for (std::size_t idx = 0; idx < n; ++idx)
+    array[idx] = uniform_dist(e);
 
   return array;
 }
@@ -75,12 +71,19 @@ void quicksort_par_tasks_helper(It const first, It const last) {
   quicksort_par_tasks_helper(first, mid);
 #pragma omp task default(none) shared(mid, last)
   quicksort_par_tasks_helper(mid + 1, last);
+
+  // this is absolute necessity!!!
+  // without it, this function returns
+  // before the recursive calls complete,
+  // invalidating the stack
 #pragma omp taskwait
 }
 
 template <typename It> void quicksort_par_tasks(It first, It last) {
 #pragma omp parallel default(none) shared(first, last)
   {
+    // we are in the omp parallel region
+    // we want only one thread to be assinged for each task
 #pragma omp single
     quicksort_par_tasks_helper(first, last);
   }
@@ -95,6 +98,8 @@ int main(int argc, const char **argv) {
   }
 
   auto n = std::stoull(argv[1]);
+  auto array = get_random_numbers(n);
+
   auto quicksort = [argv](auto first, auto last) {
     return "ser"s == argv[2]   ? quicksort_serial(first, last)
            : "sec"s == argv[2] ? quicksort_par_sections(first, last)
@@ -102,8 +107,6 @@ int main(int argc, const char **argv) {
                ? quicksort_par_tasks(first, last)
                : throw std::runtime_error("must be one of '{ser, sec, task}");
   };
-
-  auto array = get_random_numbers(n);
 
   auto t_start = omp_get_wtime();
   quicksort(std::begin(array), std::end(array));

@@ -4,5 +4,5 @@ project(omp_section_vs_task VERSION 0.1.0)
 find_package(OpenMP REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(quicksort main.cc)
+add_executable(quicksort quicksort.cc)
 target_link_libraries(quicksort PRIVATE OpenMP::OpenMP_CXX)
