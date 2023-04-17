@@ -8,6 +8,7 @@ $ make -j -Cbuild
 $ OMP_NUM_THREADS=4 build/quicksort 10000000 ser # serial
 $ OMP_NUM_THREADS=4 build/quicksort 10000000 sec # section
 $ OMP_NUM_THREADS=4 build/quicksort 10000000 task # task
+$ OMP_NUM_THREADS=4 build/quicksort 10000000 task2 # task improved
 ```
 
 ## Result

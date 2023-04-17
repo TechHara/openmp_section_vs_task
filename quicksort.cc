@@ -72,10 +72,10 @@ void quicksort_par_tasks_helper(It const first, It const last) {
 #pragma omp task default(none) shared(mid, last)
   quicksort_par_tasks_helper(mid + 1, last);
 
-  // this is absolute necessity!!!
-  // without it, this function returns
-  // before the recursive calls complete,
-  // invalidating the stack
+// this is absolute necessity!!!
+// without it, this function returns
+// before the recursive calls complete,
+// invalidating the stack
 #pragma omp taskwait
 }
 
@@ -89,11 +89,34 @@ template <typename It> void quicksort_par_tasks(It first, It last) {
   }
 }
 
+template <typename It>
+void quicksort_par_tasks2_helper(It const first, It const last) {
+  auto distance = std::distance(first, last);
+  if (distance < DISTANCE_THRESHOLD)
+    return quicksort_serial(first, last);
+  auto mid = partition(first, last);
+
+#pragma omp task default(none) firstprivate(first, mid)
+  quicksort_par_tasks_helper(first, mid);
+#pragma omp task default(none) firstprivate(mid, last)
+  quicksort_par_tasks_helper(mid + 1, last);
+}
+
+template <typename It> void quicksort_par_tasks2(It first, It last) {
+#pragma omp parallel default(none) shared(first, last)
+  {
+    // we are in the omp parallel region
+    // we want only one thread to be assinged for each task
+#pragma omp single nowait
+    quicksort_par_tasks2_helper(first, last);
+  }
+}
+
 int main(int argc, const char **argv) {
   using namespace std::string_literals;
 
   if (argc != 3) {
-    std::cerr << "Usage: " << argv[0] << " N {ser,sec,task}\n";
+    std::cerr << "Usage: " << argv[0] << " N {ser,sec,task,task2}\n";
     return EXIT_FAILURE;
   }
 
@@ -101,10 +124,11 @@ int main(int argc, const char **argv) {
   auto array = get_random_numbers(n);
 
   auto quicksort = [argv](auto first, auto last) {
-    return "ser"s == argv[2]   ? quicksort_serial(first, last)
-           : "sec"s == argv[2] ? quicksort_par_sections(first, last)
-           : "task"s == argv[2]
-               ? quicksort_par_tasks(first, last)
+    return "ser"s == argv[2]    ? quicksort_serial(first, last)
+           : "sec"s == argv[2]  ? quicksort_par_sections(first, last)
+           : "task"s == argv[2] ? quicksort_par_tasks(first, last)
+           : "task2"s == argv[2]
+               ? quicksort_par_tasks2(first, last)
                : throw std::runtime_error("must be one of '{ser, sec, task}");
   };
 
